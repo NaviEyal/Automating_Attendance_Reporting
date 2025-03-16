@@ -1,23 +1,23 @@
-# Automating_Attendance_Reporting
-An aoutmation for weekly attendance ropprt. 
+# Automating Attendance Reporting
 
+A Python script that automates weekly attendance reporting.
 
-**Recomandation:**
+## Setup
 
-0.1 ensure you have installed: 'selenium' , 'webdriver-manager'
+1. Install required packages:
+   - selenium
+   - webdriver-manager (`https://pypi.org/project/webdriver-manager/`)
+   - Script defaults to Chrome browser, but can be configured to work with other
+     browsers supported by Selenium WebDriver.  
 
-  0.1.1 I used Webdriver Manager for Python from: "https://pypi.org/project/webdriver-manager/" ; Used with Chrome. 
+2. Run the script:
+   - Use the non-GUI version for scheduling (attendance_report-public.py)
+   - Schedule it to run every Sunday morning for best results
 
-0.2 Use the non-gui version, and schedule it for every sunday-morning.  
+## Important Notes
 
-**Important Notes:**
-
-Manual verification: Manual verification is required for the first time (including the code in WhatsApp).
-
-After that, if the browser saves cookies, the verification will be saved.
-
-Security: The script saves the connection profile in a local folder. Make sure your computer is properly secured.
-
-Updates: If the website changes, the script may need to be updated.
-
-Logs: The script generates a log file named attendance_report.log in the same folder, which will help track the process.
+- First run requires manual verification (including entering verification code)
+- After first run, browser cookies save your session
+- Script saves connection profile in a local folder - secure your computer
+- If the target website changes, you'll need to update the script
+- Check attendance_report.log file for execution details and troubleshooting
