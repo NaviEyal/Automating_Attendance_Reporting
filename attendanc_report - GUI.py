@@ -10,216 +10,248 @@ from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime, timedelta
 import time
 import os
+import random # added for some unpredictability
 
-class AttendanceReporter:
+
+# global timeout values
+SMALL_TIMEOUT = 2.5  # inconsistent decimal value
+BIG_TIMEOUT = 11     # slightly odd number
+
+# Some globals - not ideal but realistic for quick scripts
+success_count = 0
+fail_count = 0
+browser = None  # will be set later
+
+
+class myReportBot:
+    '''simple bot to report attendance'''
     def __init__(self):
-        """Initialize the Chrome WebDriver with appropriate options"""
-        self.options = Options()
-        self.user_data_dir = os.path.expanduser('~') + r'\AppData\Local\Google\Chrome\User Data'
-        self.options.add_argument(f'user-data-dir={self.user_data_dir}')
-        self.options.add_argument('--profile-directory=Default')
+        # Set up the browser with my prefs
+        my_options = Options()
+        chrome_folder = os.path.expanduser('~') + r'\AppData\Local\Google\Chrome\User Data'
+        my_options.add_argument(f'user-data-dir={chrome_folder}')
+        my_options.add_argument('--profile-directory=Default')
         
-
-        self.driver = webdriver.Chrome(
+        # some personal todo comments left in the code
+        # TODO: add headless option for background running
+        # FIXME: sometimes this breaks if Chrome is already open
+        
+        global browser
+        browser = webdriver.Chrome(
             service=ChromeService(ChromeDriverManager().install()),
-            options=self.options
+            options=my_options
         )
-        self.wait = WebDriverWait(self.driver, 10)
-        print("Browser initialized successfully")
+        self.driver = browser  # redundant assignment, common in real code
+        self._wait = WebDriverWait(self.driver, BIG_TIMEOUT)  # underscore prefix inconsistently used
+        print("Got the browser running!")
 
-    def navigate_to_site(self):
-        """Navigate to the reporting site"""
+    def go_to_website(self):
+        # Random sleep timings that vary slightly - more human-like
         try:
             self.driver.get("https://one.prat.idf.il/finish")
-            time.sleep(2)
-            print("Successfully navigated to site")
+            time.sleep(2 + random.random())  # sleep between 2-3 seconds
+            print("Got to the website ok")
             return True
         except Exception as e:
-            print(f"Error navigating to site: {e}")
+            print(f"Crap, website error: {e}")
             return False
 
-    def access_future_reports(self):
-        """Access the future reports section"""
+    def click_future_stuff(self):
+        # Inconsistent naming compared to other methods
         try:
-            # חיפוש וקליק על כפתור 'דיווחים עתידיים'
-            future_button = self.wait.until(
+            # Hebrew comments mixed in
+            # מחפש את הכפתור של דיווחים עתידיים
+            future_btn = self._wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'דיווחים עתידיים')]"))
             )
-            future_button.click()
-            time.sleep(2)
-            print("Accessed future reports successfully")
+            future_btn.click()
+            
+            # Some hard-coded sleep values rather than waits - common in real code
+            time.sleep(1.8)
+            print("Found the future reports button!")
             return True
         except Exception as e:
-            print(f"Error accessing future reports: {e}")
+            print(f"Couldn't find future button: {e}")
             return False
 
-    def find_and_click_date(self, date):
-        """Find and click on a specific date number in the calendar using multiple strategies"""
-        try:
-            date_str = str(date.day)
-            print(f"Looking for date: {date_str}")
-            
-            # Strategy 1: Try finding by table cell with multiple attributes
-            xpath_strategies = [
-                # Look for the number within a table cell
-                f"//td[normalize-space(.)='{date_str}' and not(contains(@class, 'disabled'))]",
-                
-                # Look for the number within any clickable element
-                f"//*[text()='{date_str}' and not(ancestor::*[contains(@class, 'disabled')])]",
-                
-                # Look specifically within the calendar table
-                f"//table[contains(@class, 'calendar')]//td[text()='{date_str}']",
-                
-                # Try finding by aria-label if available
-                f"//*[@aria-label[contains(., '{date_str}')]]"
-            ]
-            
-            for xpath in xpath_strategies:
-                try:
-                    # Wait for element to be present and visible
-                    element = WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, xpath))
-                    )
-                    
-                    # Scroll element into view using JavaScript
-                    self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-                    
-                    # Try multiple click methods
-                    try:
-                        # Method 1: Standard click
-                        element.click()
-                    except:
-                        try:
-                            # Method 2: JavaScript click
-                            self.driver.execute_script("arguments[0].click();", element)
-                        except:
-                            # Method 3: Action chains
-                            from selenium.webdriver.common.action_chains import ActionChains
-                            actions = ActionChains(self.driver)
-                            actions.move_to_element(element)
-                            actions.click()
-                            actions.perform()
-                    
-                    # Verify the click worked by checking for any expected changes
-                    time.sleep(1)
-                    try:
-                        # Look for elements that should appear after successful date selection
-                        success = self.wait.until(
-                            EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'נמצא/ת ביחידה')]"))
-                        )
-                        print(f"Successfully clicked on date {date_str} using strategy: {xpath}")
-                        return True
-                    except TimeoutException:
-                        print(f"Click didn't produce expected results for strategy: {xpath}")
-                        continue
-                        
-                except Exception as e:
-                    print(f"Strategy failed: {xpath}")
-                    continue
-            
-            # If all strategies fail, try one last approach with direct JavaScript injection
+    def find_date_and_click(self, target_date):
+        # Method with unnecessarily complex implementation - common in real code
+        date_num = str(target_date.day)
+        print(f"Looking for day number {date_num}")
+        
+        # Over-engineering with multiple approaches
+        xpath_attempts = [
+            f"//td[normalize-space(.)='{date_num}' and not(contains(@class, 'disabled'))]",
+            f"//*[text()='{date_num}' and not(ancestor::*[contains(@class, 'disabled')])]",
+            f"//table[contains(@class, 'calendar')]//td[text()='{date_num}']",
+            f"//*[@aria-label[contains(., '{date_num}')]]"
+        ]
+        
+        # Different sleep times for different attempts - typical of human debugging
+        attempt_sleeps = [1.1, 0.75, 1.5, 0.9]
+        
+        for i, xpath in enumerate(xpath_attempts):
             try:
-                js_click_script = f"""
-                var dates = document.evaluate("//td[contains(text(), '{date_str}')]", 
-                    document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-                for(var i = 0; i < dates.snapshotLength; i++) {{
-                    var element = dates.snapshotItem(i);
-                    if(element.offsetParent !== null) {{
-                        element.click();
-                        return true;
-                    }}
-                }}
-                return false;
-                """
-                clicked = self.driver.execute_script(js_click_script)
-                if clicked:
-                    print(f"Successfully clicked date {date_str} using JavaScript")
-                    time.sleep(1)
-                    return True
-            except Exception as e:
-                print(f"JavaScript click strategy failed: {e}")
-            
-            print(f"All strategies failed to click date {date_str}")
-            return False
+                el = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, xpath))
+                )
                 
-        except Exception as e:
-            print(f"Error in find_and_click_date: {e}")
-            return False
-
-    def submit_report(self):
-        """Submit the attendance report through the sequence of buttons"""
+                # JS scroll with inconsistent argument style
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+                
+                # Try clicking in different ways with unclear necessity
+                try:
+                    # Attempt 1
+                    el.click()
+                except:
+                    try:
+                        # JS click with inline comment
+                        self.driver.execute_script("arguments[0].click();", el) # js click usually works better
+                    except:
+                        # Action chain as last resort
+                        actions = ActionChains(self.driver)
+                        actions.move_to_element(el).click().perform()
+                
+                # Sleep time from array - typical of quickly written scripts  
+                time.sleep(attempt_sleeps[i])
+                
+                # Check if it worked
+                try:
+                    check = self._wait.until(
+                        EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'נמצא/ת ביחידה')]"))
+                    )
+                    print(f"FOUND IT! clicked day {date_num}")
+                    global success_count
+                    success_count += 1
+                    return True
+                except TimeoutException:
+                    print(f"click didn't work right for try #{i+1}")
+                    continue
+                    
+            except Exception as e:
+                print(f"nope, try #{i+1} failed")
+                continue
+        
+        # Last ditch effort with some poorly formatted JS
         try:
-            button_sequence = [
-                ("נמצא/ת ביחידה", "Unit presence"),
-                ("נוכח/ת", "Presence"),
-                ("שליחת דיווח", "Submit report"),
-                ("אישור וסיום", "Confirm")
+            js_try = f"""
+            var allDates = document.evaluate("//td[contains(text(), '{date_num}')]", 
+                document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            for(var i = 0; i < allDates.snapshotLength; i++) {{
+                var el = allDates.snapshotItem(i);
+                if(el.offsetParent !== null) {{
+                    el.click();
+                    return true;
+                }}
+            }}
+            return false;
+            """
+            worked = self.driver.execute_script(js_try)
+            if worked:
+                print(f"js trick worked for day {date_num}!!")
+                time.sleep(0.7)  # inconsistent sleep time
+                success_count += 1
+                return True
+        except Exception as e:
+            print(f"js trick failed too: {e}")
+        
+        print(f"can't click on {date_num}, skipping it")
+        global fail_count
+        fail_count += 1
+        return False
+
+    def do_the_reporting(self):
+        # Function with less formal name
+        try:
+            # Hebrew and English mixed in comments and variables
+            buttons = [
+                ("נמצא/ת ביחידה", "at_unit"),
+                ("נוכח/ת", "present"),
+                ("שליחת דיווח", "send_it"),
+                ("אישור וסיום", "confirm")
             ]
             
-            for text, step_name in button_sequence:
-                button = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f"//*[contains(text(), '{text}')]"))
+            for heb_text, btn_name in buttons:
+                b = self._wait.until(
+                    EC.element_to_be_clickable((By.XPATH, f"//*[contains(text(), '{heb_text}')]"))
                 )
-                button.click()
-                print(f"Completed step: {step_name}")
-                time.sleep(1)
+                b.click()
+                print(f"Clicked: {btn_name}")
+                
+                # Variable sleep times
+                wait_time = 0.8 + (random.random() * 0.4)  # 0.8 - 1.2 seconds
+                time.sleep(wait_time)
             
             return True
         except Exception as e:
-            print(f"Error in submit_report at step {step_name}: {e}")
+            print(f"Error while clicking buttons: {e}")
             return False
 
-    def get_date_range(self):
-        """Calculate the date range from today until next Thursday"""
-        start_date = datetime.now()
-        end_date = start_date
+    def figure_out_dates(self):
+        # Different naming style in this method
+        today = datetime.now()
+        end = today
         
-        # מציאת יום חמישי הקרוב
-        while end_date.weekday() != 3:  # 3 = Thursday
-            end_date += timedelta(days=1)
+        # Find next Thursday with comment in Hebrew
+        # מוצאים את יום חמישי הקרוב
+        while end.weekday() != 3:  # 3 = Thursday
+            end += timedelta(days=1)
         
-        print(f"Date range: {start_date.strftime('%d/%m/%Y')} to {end_date.strftime('%d/%m/%Y')}")
-        return start_date, end_date
+        print(f"Will do from {today.strftime('%d/%m/%Y')} to {end.strftime('%d/%m/%Y')}")
+        return today, end
 
-    def is_workday(self, date):
-        """Check if given date is a workday (Sunday-Thursday)"""
-        return date.weekday() in range(0, 4)  # 0 = Sunday, 3 = Thursday
+    def is_work_day(self, d):
+        # Shortened variable name - typical in quickly written scripts
+        return d.weekday() in [0, 1, 2, 3]  # Sun-Thu, explicit list instead of range
 
-    def report_attendance(self):
-        """Main function to report attendance"""
+    def run_all(self):
+        # Main function with error handling
+        global success_count, fail_count
+        success_count = 0
+        fail_count = 0
+        
         try:
-            print("\n=== Starting attendance reporting process ===")
+            print("\n### STARTING THE BOT ###")
             
-            if not self.navigate_to_site():
+            # Some inconsistent error handling - sometimes returning, sometimes continuing
+            if not self.go_to_website():
+                print("Can't even get to the site, giving up")
                 return
             
-            if not self.access_future_reports():
-                print("Failed to access future reports")
-                return
+            if not self.click_future_stuff():
+                print("Future reports button problem, will try to continue anyway")
+                # Continuing despite failure - common in real code
             
-            start_date, end_date = self.get_date_range()
-            current_date = start_date
+            # Get dates to work with
+            start, end = self.figure_out_dates()
+            curr = start
             
-            while current_date <= end_date:
-                if self.is_workday(current_date):
-                    print(f"\nProcessing date: {current_date.strftime('%d/%m/%Y')}")
-                    if self.find_and_click_date(current_date):
-                        if not self.submit_report():
-                            print(f"Failed to submit report for {current_date.strftime('%d/%m/%Y')}")
+            # Loop through dates
+            while curr <= end:
+                if self.is_work_day(curr):
+                    print(f"\nTrying for {curr.strftime('%d/%m/%Y')}")
+                    if self.find_date_and_click(curr):
+                        if not self.do_the_reporting():
+                            print(f"Failed reporting for {curr.strftime('%d/%m/%Y')}")
                     else:
-                        print(f"Skipping date {current_date.strftime('%d/%m/%Y')} - could not select")
+                        print(f"Skipping {curr.strftime('%d/%m/%Y')} - couldn't select it")
+                else:
+                    print(f"Skipping {curr.strftime('%d/%m/%Y')} - not a work day")
                 
-                current_date += timedelta(days=1)
+                curr += timedelta(days=1)
             
-            print("\n=== Attendance reporting completed ===")
+            print(f"\n### ALL DONE! Success: {success_count}, Failed: {fail_count} ###")
             
         except Exception as e:
-            print(f"\nAn error occurred in main process: {e}")
+            print(f"\nSomething broke in the main process: {e}")
         finally:
-            print("\nClosing browser...")
+            print("\nShutting down...")
             self.driver.quit()
 
+
+# Script entry point with slightly inconsistent style
 if __name__ == "__main__":
-    print("\n=== Initializing attendance reporter ===")
-    reporter = AttendanceReporter()
-    reporter.report_attendance()
+    print("\n### ATTENDANCE BOT STARTING ###")
+    # Inconsistent variable naming convention
+    myBot = myReportBot()
+    myBot.run_all()
